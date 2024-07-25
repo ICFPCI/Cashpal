@@ -9,63 +9,63 @@ import (
 )
 
 type Account struct {
-	ID          int32
-	UserID      int32
-	AccountName string
-	AccountType string
-	CreatedAt   pgtype.Timestamp
-	UpdatedAt   pgtype.Timestamp
+	ID          int32            `json:"id"`
+	UserID      int32            `json:"user_id"`
+	AccountName string           `json:"account_name"`
+	AccountType string           `json:"account_type"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
 
 type AccountEvent struct {
-	ID          int32
-	AccountID   int32
-	EventTypeID int32
-	Description string
-	CreatedAt   pgtype.Timestamp
-	UpdatedAt   pgtype.Timestamp
+	ID          int32            `json:"id"`
+	AccountID   int32            `json:"account_id"`
+	EventTypeID int32            `json:"event_type_id"`
+	Description string           `json:"description"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
 
 type EventType struct {
-	ID   int32
-	Name string
+	ID   int32  `json:"id"`
+	Name string `json:"name"`
 }
 
 type Member struct {
-	ID           int32
-	AccountID    int32
-	UserID       int32
-	MemberRoleID int32
-	CreatedAt    pgtype.Timestamp
-	UpdatedAt    pgtype.Timestamp
+	ID           int32            `json:"id"`
+	AccountID    int32            `json:"account_id"`
+	UserID       int32            `json:"user_id"`
+	MemberRoleID int32            `json:"member_role_id"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 }
 
 type MemberRole struct {
-	ID   int32
-	Name string
+	ID   int32  `json:"id"`
+	Name string `json:"name"`
 }
 
 type Transaction struct {
-	ID                int32
-	AccountID         int32
-	UserID            int32
-	TransactionDate   pgtype.Date
-	TransactionTypeID int32
-	Amount            float64
-	CreatedAt         pgtype.Timestamp
-	UpdatedAt         pgtype.Timestamp
-	Description       string
+	ID                int32            `json:"id"`
+	AccountID         int32            `json:"account_id"`
+	UserID            int32            `json:"user_id"`
+	TransactionDate   pgtype.Date      `json:"transaction_date"`
+	TransactionTypeID int32            `json:"transaction_type_id"`
+	Amount            float64          `json:"amount"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+	Description       string           `json:"description"`
 }
 
 type TransactionType struct {
-	ID   int32
-	Name string
+	ID   int32  `json:"id"`
+	Name string `json:"name"`
 }
 
 type User struct {
-	ID        int32
-	Username  string
-	Password  string
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	ID        int32            `json:"id"`
+	Username  string           `json:"username"`
+	Password  string           `json:"password"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }

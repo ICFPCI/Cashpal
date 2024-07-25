@@ -37,6 +37,7 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	w.Write(serializedUsers)
 }
 
@@ -83,6 +84,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	w.Write(serializedUser)
 }
 
@@ -110,7 +112,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println(err.Error())
-		http.Error(w, "service unavailable", http.StatusInternalServerError)
+		http.Error(w, "this user does not exist", http.StatusNotFound)
 		return
 	}
 
@@ -122,6 +124,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	w.Write(serializedUser)
 }
 
@@ -157,15 +160,16 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println(err.Error())
-		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
+		http.Error(w, "failed to hash password", http.StatusInternalServerError)
 		return
 	}
 
 	if err := query.UpdateUser(r.Context(), user); err != nil {
 		log.Println(err.Error())
-		http.Error(w, "User update failed", http.StatusInternalServerError)
+		http.Error(w, "user update failed", http.StatusInternalServerError)
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("user updated"))
 }

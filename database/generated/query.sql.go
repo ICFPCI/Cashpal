@@ -21,9 +21,9 @@ RETURNING id, user_id, account_name, account_type, created_at, updated_at
 `
 
 type CreateAccountParams struct {
-	UserID      int32
-	AccountName string
-	AccountType string
+	UserID      int32  `json:"user_id"`
+	AccountName string `json:"account_name"`
+	AccountType string `json:"account_type"`
 }
 
 func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
@@ -50,9 +50,9 @@ RETURNING id, account_id, event_type_id, description, created_at, updated_at
 `
 
 type CreateAccountEventParams struct {
-	AccountID   int32
-	EventTypeID int32
-	Description string
+	AccountID   int32  `json:"account_id"`
+	EventTypeID int32  `json:"event_type_id"`
+	Description string `json:"description"`
 }
 
 func (q *Queries) CreateAccountEvent(ctx context.Context, arg CreateAccountEventParams) (AccountEvent, error) {
@@ -80,9 +80,9 @@ RETURNING id, account_id, user_id, member_role_id, created_at, updated_at
 `
 
 type CreateMemberParams struct {
-	AccountID    int32
-	UserID       int32
-	MemberRoleID int32
+	AccountID    int32 `json:"account_id"`
+	UserID       int32 `json:"user_id"`
+	MemberRoleID int32 `json:"member_role_id"`
 }
 
 func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Member, error) {
@@ -110,12 +110,12 @@ returning id, account_id, user_id, transaction_date, transaction_type_id, amount
 `
 
 type CreateTransactionParams struct {
-	AccountID         int32
-	UserID            int32
-	TransactionDate   pgtype.Date
-	TransactionTypeID int32
-	Amount            float64
-	Description       string
+	AccountID         int32       `json:"account_id"`
+	UserID            int32       `json:"user_id"`
+	TransactionDate   pgtype.Date `json:"transaction_date"`
+	TransactionTypeID int32       `json:"transaction_type_id"`
+	Amount            float64     `json:"amount"`
+	Description       string      `json:"description"`
 }
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
@@ -152,8 +152,8 @@ RETURNING id, username, password, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	Username string
-	Password string
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -638,9 +638,9 @@ WHERE id = $1
 `
 
 type UpdateAccountParams struct {
-	ID          int32
-	AccountName string
-	AccountType string
+	ID          int32  `json:"id"`
+	AccountName string `json:"account_name"`
+	AccountType string `json:"account_type"`
 }
 
 func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) error {
@@ -655,8 +655,8 @@ WHERE id = $1
 `
 
 type UpdateAccountEventParams struct {
-	ID          int32
-	Description string
+	ID          int32  `json:"id"`
+	Description string `json:"description"`
 }
 
 func (q *Queries) UpdateAccountEvent(ctx context.Context, arg UpdateAccountEventParams) error {
@@ -682,9 +682,9 @@ UPDATE Transactions
 `
 
 type UpdateTransactionParams struct {
-	ID          int32
-	Amount      float64
-	Description string
+	ID          int32   `json:"id"`
+	Amount      float64 `json:"amount"`
+	Description string  `json:"description"`
 }
 
 func (q *Queries) UpdateTransaction(ctx context.Context, arg UpdateTransactionParams) error {
@@ -699,8 +699,8 @@ WHERE id = $1
 `
 
 type UpdateUserParams struct {
-	ID       int32
-	Password string
+	ID       int32  `json:"id"`
+	Password string `json:"password"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
