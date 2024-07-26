@@ -164,12 +164,22 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := query.UpdateUser(r.Context(), user); err != nil {
+	updatedUser, err := query.UpdateUser(r.Context(), user)
+
+	if err != nil {
 		log.Println(err.Error())
 		http.Error(w, "user update failed", http.StatusInternalServerError)
 		return
 	}
 
+	serializedUpdatedUser, err := json.Marshal(updatedUser)
+
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, "data serialization failed", http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("user updated"))
+	w.Write(serializedUpdatedUser)
 }

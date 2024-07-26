@@ -177,14 +177,23 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 
 	compareData(&accountUpdateData, &account)
 
-	if err := query.UpdateAccount(r.Context(), accountUpdateData); err != nil {
+	updatedAccount, err := query.UpdateAccount(r.Context(), accountUpdateData)
+
+	if err != nil {
 		log.Println(err.Error())
 		http.Error(w, "account update failed", http.StatusInternalServerError)
 		return
 	}
 
+	serializedUpdatedAccount, err := json.Marshal(updatedAccount)
+
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, "data serialization failed", http.StatusInternalServerError)
+	}
+
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("account updated"))
+	w.Write(serializedUpdatedAccount)
 }
 
 func DeleteAccount(w http.ResponseWriter, r *http.Request) {

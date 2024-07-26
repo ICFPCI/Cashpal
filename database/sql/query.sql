@@ -20,10 +20,11 @@ INSERT INTO Users (
 )
 RETURNING *;
 
--- name: UpdateUser :exec
+-- name: UpdateUser :one
 UPDATE Users
   set password = $2, updated_at = NOW() AT TIME ZONE 'utc'
-WHERE id = $1;
+WHERE id = $1
+RETURNING *;
 
 -- name: DeleteUser :exec
 DELETE FROM Users
@@ -52,10 +53,11 @@ INSERT INTO Accounts (
 )
 RETURNING *;
 
--- name: UpdateAccount :exec
+-- name: UpdateAccount :one
 UPDATE Accounts
   set account_name = $2, account_type = $3, updated_at = NOW() AT TIME ZONE 'utc'
-WHERE id = $1;
+WHERE id = $1
+RETURNING *;
 
 -- name: DeleteAccount :exec
 DELETE FROM Accounts
@@ -84,10 +86,11 @@ INSERT INTO Account_Events (
 )
 RETURNING *;
 
--- name: UpdateAccountEvent :exec
+-- name: UpdateAccountEvent :one
 UPDATE Account_Events
   set description = $2, updated_at = NOW() AT TIME ZONE 'utc'
-WHERE id = $1;
+WHERE id = $1
+RETURNING *;
 
 -- name: DeleteAccountEvent :exec
 DELETE FROM Account_Events
@@ -95,9 +98,9 @@ WHERE id = $1;
 
 -- MEMBERS
 
--- name: GetNember :one
+-- name: GetMember :one
 SELECT * FROM Members
-WHERE id = $1 LIMIT 1;
+WHERE account_id = $1 and user_id = $2 LIMIT 1;
 
 -- name: ListMember :many
 SELECT * FROM Members
@@ -117,14 +120,15 @@ VALUES (
 )
 RETURNING *;
 
--- name: UpdateMember :exec
+-- name: UpdateMember :one
 UPDATE Members
-  set updated_at = NOW() AT TIME ZONE 'utc'
-WHERE id = $1;
+  set member_role_id = $3, updated_at = NOW() AT TIME ZONE 'utc'
+WHERE account_id = $1 and user_id = $2
+RETURNING *;
 
 -- name: DeleteMember :exec
 DELETE FROM Members
-WHERE id = $1;
+WHERE account_id = $1 and user_id = $2;
 
 -- TRANSACTIONS
 
@@ -150,7 +154,8 @@ VALUES(
 )
 returning *;
 
--- name: UpdateTransaction :exec
+-- name: UpdateTransaction :one
 UPDATE Transactions
   SET amount = $2, description = $3, updated_at = NOW() AT TIME ZONE 'utc'
-  WHERE id = $1;
+  WHERE id = $1
+  RETURNING *;

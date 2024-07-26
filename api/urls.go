@@ -25,6 +25,13 @@ func SetupURLs(router *http.ServeMux) {
 	protected.HandleFunc("PATCH /accounts/{accountID}", handlers.UpdateAccount)
 	protected.HandleFunc("DELETE /accounts/{accountID}", handlers.DeleteAccount)
 
+	// Members
+	protected.HandleFunc("GET /accounts/{accountID}/members", handlers.ListMembers)
+	protected.HandleFunc("GET /accounts/{accountID}/members/{userID}", handlers.GetMember)
+	protected.HandleFunc("POST /accounts/{accountID}/members", handlers.AddMember)
+	protected.HandleFunc("PATCH /accounts/{accountID}/members/{userID}", handlers.UpdateMember)
+	protected.HandleFunc("DELETE /accounts/{accountID}/members/{userID}", handlers.DeleteMember)
+
 	// Authentication
 	router.HandleFunc("GET /login", handlers.Login)
 

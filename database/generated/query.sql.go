@@ -191,11 +191,16 @@ func (q *Queries) DeleteAccountEvent(ctx context.Context, id int32) error {
 
 const deleteMember = `-- name: DeleteMember :exec
 DELETE FROM Members
-WHERE id = $1
+WHERE account_id = $1 and user_id = $2
 `
 
-func (q *Queries) DeleteMember(ctx context.Context, id int32) error {
-	_, err := q.db.Exec(ctx, deleteMember, id)
+type DeleteMemberParams struct {
+	AccountID int32 `json:"account_id"`
+	UserID    int32 `json:"user_id"`
+}
+
+func (q *Queries) DeleteMember(ctx context.Context, arg DeleteMemberParams) error {
+	_, err := q.db.Exec(ctx, deleteMember, arg.AccountID, arg.UserID)
 	return err
 }
 
@@ -251,15 +256,20 @@ func (q *Queries) GetAccountEvent(ctx context.Context, id int32) (AccountEvent, 
 	return i, err
 }
 
-const getNember = `-- name: GetNember :one
+const getMember = `-- name: GetMember :one
 
 SELECT id, account_id, user_id, member_role_id, created_at, updated_at FROM Members
-WHERE id = $1 LIMIT 1
+WHERE account_id = $1 and user_id = $2 LIMIT 1
 `
 
+type GetMemberParams struct {
+	AccountID int32 `json:"account_id"`
+	UserID    int32 `json:"user_id"`
+}
+
 // MEMBERS
-func (q *Queries) GetNember(ctx context.Context, id int32) (Member, error) {
-	row := q.db.QueryRow(ctx, getNember, id)
+func (q *Queries) GetMember(ctx context.Context, arg GetMemberParams) (Member, error) {
+	row := q.db.QueryRow(ctx, getMember, arg.AccountID, arg.UserID)
 	var i Member
 	err := row.Scan(
 		&i.ID,
@@ -631,10 +641,11 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
-const updateAccount = `-- name: UpdateAccount :exec
+const updateAccount = `-- name: UpdateAccount :one
 UPDATE Accounts
   set account_name = $2, account_type = $3, updated_at = NOW() AT TIME ZONE 'utc'
 WHERE id = $1
+RETURNING id, user_id, account_name, account_type, created_at, updated_at
 `
 
 type UpdateAccountParams struct {
@@ -643,15 +654,25 @@ type UpdateAccountParams struct {
 	AccountType string `json:"account_type"`
 }
 
-func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) error {
-	_, err := q.db.Exec(ctx, updateAccount, arg.ID, arg.AccountName, arg.AccountType)
-	return err
+func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (Account, error) {
+	row := q.db.QueryRow(ctx, updateAccount, arg.ID, arg.AccountName, arg.AccountType)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountName,
+		&i.AccountType,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
-const updateAccountEvent = `-- name: UpdateAccountEvent :exec
+const updateAccountEvent = `-- name: UpdateAccountEvent :one
 UPDATE Account_Events
   set description = $2, updated_at = NOW() AT TIME ZONE 'utc'
 WHERE id = $1
+RETURNING id, account_id, event_type_id, description, created_at, updated_at
 `
 
 type UpdateAccountEventParams struct {
@@ -659,26 +680,52 @@ type UpdateAccountEventParams struct {
 	Description string `json:"description"`
 }
 
-func (q *Queries) UpdateAccountEvent(ctx context.Context, arg UpdateAccountEventParams) error {
-	_, err := q.db.Exec(ctx, updateAccountEvent, arg.ID, arg.Description)
-	return err
+func (q *Queries) UpdateAccountEvent(ctx context.Context, arg UpdateAccountEventParams) (AccountEvent, error) {
+	row := q.db.QueryRow(ctx, updateAccountEvent, arg.ID, arg.Description)
+	var i AccountEvent
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.EventTypeID,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
-const updateMember = `-- name: UpdateMember :exec
+const updateMember = `-- name: UpdateMember :one
 UPDATE Members
-  set updated_at = NOW() AT TIME ZONE 'utc'
-WHERE id = $1
+  set member_role_id = $3, updated_at = NOW() AT TIME ZONE 'utc'
+WHERE account_id = $1 and user_id = $2
+RETURNING id, account_id, user_id, member_role_id, created_at, updated_at
 `
 
-func (q *Queries) UpdateMember(ctx context.Context, id int32) error {
-	_, err := q.db.Exec(ctx, updateMember, id)
-	return err
+type UpdateMemberParams struct {
+	AccountID    int32 `json:"account_id"`
+	UserID       int32 `json:"user_id"`
+	MemberRoleID int32 `json:"member_role_id"`
 }
 
-const updateTransaction = `-- name: UpdateTransaction :exec
+func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) (Member, error) {
+	row := q.db.QueryRow(ctx, updateMember, arg.AccountID, arg.UserID, arg.MemberRoleID)
+	var i Member
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.UserID,
+		&i.MemberRoleID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateTransaction = `-- name: UpdateTransaction :one
 UPDATE Transactions
   SET amount = $2, description = $3, updated_at = NOW() AT TIME ZONE 'utc'
   WHERE id = $1
+  RETURNING id, account_id, user_id, transaction_date, transaction_type_id, amount, created_at, updated_at, description
 `
 
 type UpdateTransactionParams struct {
@@ -687,15 +734,28 @@ type UpdateTransactionParams struct {
 	Description string  `json:"description"`
 }
 
-func (q *Queries) UpdateTransaction(ctx context.Context, arg UpdateTransactionParams) error {
-	_, err := q.db.Exec(ctx, updateTransaction, arg.ID, arg.Amount, arg.Description)
-	return err
+func (q *Queries) UpdateTransaction(ctx context.Context, arg UpdateTransactionParams) (Transaction, error) {
+	row := q.db.QueryRow(ctx, updateTransaction, arg.ID, arg.Amount, arg.Description)
+	var i Transaction
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.UserID,
+		&i.TransactionDate,
+		&i.TransactionTypeID,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Description,
+	)
+	return i, err
 }
 
-const updateUser = `-- name: UpdateUser :exec
+const updateUser = `-- name: UpdateUser :one
 UPDATE Users
   set password = $2, updated_at = NOW() AT TIME ZONE 'utc'
 WHERE id = $1
+RETURNING id, username, password, created_at, updated_at
 `
 
 type UpdateUserParams struct {
@@ -703,7 +763,15 @@ type UpdateUserParams struct {
 	Password string `json:"password"`
 }
 
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
-	_, err := q.db.Exec(ctx, updateUser, arg.ID, arg.Password)
-	return err
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUser, arg.ID, arg.Password)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Password,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
