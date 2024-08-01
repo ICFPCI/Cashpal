@@ -12,7 +12,7 @@ func SetupURLs(router *http.ServeMux) {
 	router.Handle("/", middleware.ValidateJWT(protected))
 
 	// Users
-	protected.HandleFunc("GET /users", handlers.ListUsers)
+	// protected.HandleFunc("GET /users", handlers.ListUsers)
 	protected.HandleFunc("POST /users", handlers.CreateUser)
 	protected.HandleFunc("GET /users/{userID}", handlers.GetUser)
 	protected.HandleFunc("PATCH /users/{userID}", handlers.UpdateUser)

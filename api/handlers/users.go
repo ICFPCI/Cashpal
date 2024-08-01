@@ -4,12 +4,30 @@ import (
 	"cashpal/api/utils"
 	"cashpal/database"
 	db "cashpal/database/generated"
+	"cashpal/middleware"
+	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
 )
 
+func verifyUserOwnership(userID int32, context context.Context) (int, error) {
+
+	contextUserID, ok := context.Value(middleware.UserContextKey).(int32)
+	if !ok {
+		return http.StatusInternalServerError, errors.New("user id cannot be loaded from the session data")
+	}
+
+	if contextUserID != int32(userID) {
+		return http.StatusForbidden, errors.New("access denied")
+	}
+
+	return http.StatusOK, nil
+}
+
+// NOT USED: The URL for this handler is not enabled.
 func ListUsers(w http.ResponseWriter, r *http.Request) {
 	query, connClose, err := database.GetNewConnection(r.Context())
 
@@ -98,6 +116,11 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if statusCode, err := verifyUserOwnership(int32(userID), r.Context()); err != nil {
+		http.Error(w, err.Error(), statusCode)
+		return
+	}
+
 	query, connClose, err := database.GetNewConnection(r.Context())
 
 	if err != nil {
@@ -134,6 +157,11 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err.Error())
 		http.Error(w, "user id is invalid or malformed", http.StatusBadRequest)
+		return
+	}
+
+	if statusCode, err := verifyUserOwnership(int32(userID), r.Context()); err != nil {
+		http.Error(w, err.Error(), statusCode)
 		return
 	}
 
