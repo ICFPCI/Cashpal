@@ -60,11 +60,28 @@ func GetAccount(w http.ResponseWriter, r *http.Request) {
 
 	defer connClose()
 
-	account, err := query.GetAccount(r.Context(), int32(accountID))
+	contextUserID, ok := r.Context().Value(middleware.UserContextKey).(int32)
+
+	if !ok {
+		http.Error(w, "user user id cannot be loaded from the session data", http.StatusInternalServerError)
+		return
+	}
+
+	userCheckParams := db.GetAccountWithUserCheckParams{
+		ID:     int32(accountID),
+		UserID: contextUserID,
+	}
+
+	account, err := query.GetAccountWithUserCheck(r.Context(), userCheckParams)
 
 	if err != nil {
 		log.Println(err.Error())
-		http.Error(w, "this account does not exist", http.StatusInternalServerError)
+		http.Error(w, "this account does not exist", http.StatusNotFound)
+		return
+	}
+
+	if account.IsMember != 1 {
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 
@@ -128,7 +145,7 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func compareData(updateData *db.UpdateAccountParams, currentData *db.Account) {
+func compareData(updateData *db.UpdateAccountParams, currentData *db.GetAccountWithUserCheckRow) {
 	if updateData.AccountName == "" {
 		updateData.AccountName = currentData.AccountName
 	}
@@ -167,11 +184,30 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 
 	defer connClose()
 
-	account, err := query.GetAccount(r.Context(), int32(accountID))
+	contextUserID, ok := r.Context().Value(middleware.UserContextKey).(int32)
+
+	if !ok {
+		http.Error(w, "user user id cannot be loaded from the session data", http.StatusInternalServerError)
+		return
+	}
+
+	userCheckParams := db.GetAccountWithUserCheckParams{
+		ID:     int32(accountID),
+		UserID: contextUserID,
+	}
+
+	account, err := query.GetAccountWithUserCheck(r.Context(), userCheckParams)
+
+	// account, err := query.GetAccount(r.Context(), int32(accountID))
 
 	if err != nil {
 		log.Println(err.Error())
 		http.Error(w, "this account does not exist", http.StatusNotFound)
+		return
+	}
+
+	if account.IsMember != 1 {
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 

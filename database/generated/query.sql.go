@@ -256,6 +256,48 @@ func (q *Queries) GetAccountEvent(ctx context.Context, id int32) (AccountEvent, 
 	return i, err
 }
 
+const getAccountWithUserCheck = `-- name: GetAccountWithUserCheck :one
+SELECT 
+    acc.id, acc.user_id, acc.account_name, acc.account_type, acc.created_at, acc.updated_at,
+    CASE 
+        WHEN mem.user_id IS NOT NULL OR (acc.account_type = 'individual' AND acc.user_id=$2) THEN 1
+        ELSE 0
+    END AS is_member
+FROM Accounts acc
+LEFT JOIN Members mem ON acc.id = mem.account_id AND (mem.user_id = $2)
+WHERE acc.id = $1
+`
+
+type GetAccountWithUserCheckParams struct {
+	ID     int32 `json:"id"`
+	UserID int32 `json:"user_id"`
+}
+
+type GetAccountWithUserCheckRow struct {
+	ID          int32            `json:"id"`
+	UserID      int32            `json:"user_id"`
+	AccountName string           `json:"account_name"`
+	AccountType string           `json:"account_type"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	IsMember    int32            `json:"is_member"`
+}
+
+func (q *Queries) GetAccountWithUserCheck(ctx context.Context, arg GetAccountWithUserCheckParams) (GetAccountWithUserCheckRow, error) {
+	row := q.db.QueryRow(ctx, getAccountWithUserCheck, arg.ID, arg.UserID)
+	var i GetAccountWithUserCheckRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountName,
+		&i.AccountType,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsMember,
+	)
+	return i, err
+}
+
 const getMember = `-- name: GetMember :one
 
 SELECT id, account_id, user_id, member_role_id, created_at, updated_at FROM Members

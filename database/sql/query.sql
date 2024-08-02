@@ -36,6 +36,17 @@ WHERE id = $1;
 SELECT * FROM Accounts
 WHERE id = $1 LIMIT 1;
 
+-- name: GetAccountWithUserCheck :one
+SELECT 
+    acc.*,
+    CASE 
+        WHEN mem.user_id IS NOT NULL OR (acc.account_type = 'individual' AND acc.user_id=$2) THEN 1
+        ELSE 0
+    END AS is_member
+FROM Accounts acc
+LEFT JOIN Members mem ON acc.id = mem.account_id AND (mem.user_id = $2)
+WHERE acc.id = $1;
+
 -- name: ListAccount :many
 SELECT * FROM Accounts
 ORDER BY id;
