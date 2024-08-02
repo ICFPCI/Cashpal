@@ -13,25 +13,23 @@ import (
 
 const createAccount = `-- name: CreateAccount :one
 INSERT INTO Accounts (
-  user_id, account_name, account_type
+  account_name, account_type
 ) VALUES (
-  $1, $2, $3
+  $1, $2
 )
-RETURNING id, user_id, account_name, account_type, created_at, updated_at
+RETURNING id, account_name, account_type, created_at, updated_at
 `
 
 type CreateAccountParams struct {
-	UserID      int32  `json:"user_id"`
 	AccountName string `json:"account_name"`
 	AccountType string `json:"account_type"`
 }
 
 func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
-	row := q.db.QueryRow(ctx, createAccount, arg.UserID, arg.AccountName, arg.AccountType)
+	row := q.db.QueryRow(ctx, createAccount, arg.AccountName, arg.AccountType)
 	var i Account
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
 		&i.AccountName,
 		&i.AccountType,
 		&i.CreatedAt,
@@ -216,7 +214,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
 
 const getAccount = `-- name: GetAccount :one
 
-SELECT id, user_id, account_name, account_type, created_at, updated_at FROM Accounts
+SELECT id, account_name, account_type, created_at, updated_at FROM Accounts
 WHERE id = $1 LIMIT 1
 `
 
@@ -226,7 +224,6 @@ func (q *Queries) GetAccount(ctx context.Context, id int32) (Account, error) {
 	var i Account
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
 		&i.AccountName,
 		&i.AccountType,
 		&i.CreatedAt,
@@ -258,13 +255,13 @@ func (q *Queries) GetAccountEvent(ctx context.Context, id int32) (AccountEvent, 
 
 const getAccountWithUserCheck = `-- name: GetAccountWithUserCheck :one
 SELECT 
-    acc.id, acc.user_id, acc.account_name, acc.account_type, acc.created_at, acc.updated_at,
+    acc.id, acc.account_name, acc.account_type, acc.created_at, acc.updated_at,
     CASE 
-        WHEN mem.user_id IS NOT NULL OR (acc.account_type = 'individual' AND acc.user_id=$2) THEN 1
+        WHEN mem.user_id IS NOT NULL THEN 1
         ELSE 0
     END AS is_member
 FROM Accounts acc
-LEFT JOIN Members mem ON acc.id = mem.account_id AND (mem.user_id = $2)
+JOIN Members mem ON acc.id = mem.account_id AND mem.user_id = $2
 WHERE acc.id = $1
 `
 
@@ -275,7 +272,6 @@ type GetAccountWithUserCheckParams struct {
 
 type GetAccountWithUserCheckRow struct {
 	ID          int32            `json:"id"`
-	UserID      int32            `json:"user_id"`
 	AccountName string           `json:"account_name"`
 	AccountType string           `json:"account_type"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
@@ -288,7 +284,6 @@ func (q *Queries) GetAccountWithUserCheck(ctx context.Context, arg GetAccountWit
 	var i GetAccountWithUserCheckRow
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
 		&i.AccountName,
 		&i.AccountType,
 		&i.CreatedAt,
@@ -387,7 +382,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 }
 
 const listAccount = `-- name: ListAccount :many
-SELECT id, user_id, account_name, account_type, created_at, updated_at FROM Accounts
+SELECT id, account_name, account_type, created_at, updated_at FROM Accounts
 ORDER BY id
 `
 
@@ -402,7 +397,6 @@ func (q *Queries) ListAccount(ctx context.Context) ([]Account, error) {
 		var i Account
 		if err := rows.Scan(
 			&i.ID,
-			&i.UserID,
 			&i.AccountName,
 			&i.AccountType,
 			&i.CreatedAt,
@@ -419,9 +413,11 @@ func (q *Queries) ListAccount(ctx context.Context) ([]Account, error) {
 }
 
 const listAccountByUser = `-- name: ListAccountByUser :many
-SELECT id, user_id, account_name, account_type, created_at, updated_at FROM Accounts
-WHERE user_id = $1
-ORDER BY id
+SELECT 
+  	acc.id, acc.account_name, acc.account_type, acc.created_at, acc.updated_at
+FROM Accounts acc
+JOIN Members mem ON acc.id = mem.account_id
+WHERE mem.user_id = $1
 `
 
 func (q *Queries) ListAccountByUser(ctx context.Context, userID int32) ([]Account, error) {
@@ -435,7 +431,6 @@ func (q *Queries) ListAccountByUser(ctx context.Context, userID int32) ([]Accoun
 		var i Account
 		if err := rows.Scan(
 			&i.ID,
-			&i.UserID,
 			&i.AccountName,
 			&i.AccountType,
 			&i.CreatedAt,
@@ -687,7 +682,7 @@ const updateAccount = `-- name: UpdateAccount :one
 UPDATE Accounts
   set account_name = $2, account_type = $3, updated_at = NOW() AT TIME ZONE 'utc'
 WHERE id = $1
-RETURNING id, user_id, account_name, account_type, created_at, updated_at
+RETURNING id, account_name, account_type, created_at, updated_at
 `
 
 type UpdateAccountParams struct {
@@ -701,7 +696,6 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (A
 	var i Account
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
 		&i.AccountName,
 		&i.AccountType,
 		&i.CreatedAt,

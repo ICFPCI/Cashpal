@@ -10,7 +10,6 @@ import (
 
 type Account struct {
 	ID          int32            `json:"id"`
-	UserID      int32            `json:"user_id"`
 	AccountName string           `json:"account_name"`
 	AccountType string           `json:"account_type"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`

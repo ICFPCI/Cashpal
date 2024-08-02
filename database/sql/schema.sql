@@ -23,7 +23,6 @@ CREATE TABLE Users (
 
 CREATE TABLE Accounts (
     id SERIAL PRIMARY KEY,
-    user_id int NOT NULL,
     account_name TEXT NOT NULL,
     account_type TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),

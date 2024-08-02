@@ -4,13 +4,22 @@ import (
 	"cashpal/database"
 	db "cashpal/database/generated"
 	"cashpal/middleware"
+	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
 )
 
 func ListAccounts(w http.ResponseWriter, r *http.Request) {
+	contextUserID, ok := r.Context().Value(middleware.UserContextKey).(int32)
+
+	if !ok {
+		http.Error(w, "user user id cannot be loaded from the session data", http.StatusInternalServerError)
+		return
+	}
+
 	query, connClose, err := database.GetNewConnection(r.Context())
 
 	if err != nil {
@@ -21,7 +30,7 @@ func ListAccounts(w http.ResponseWriter, r *http.Request) {
 
 	defer connClose()
 
-	accounts, err := query.ListAccount(r.Context())
+	accounts, err := query.ListAccountByUser(r.Context(), contextUserID)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -50,6 +59,13 @@ func GetAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	contextUserID, ok := r.Context().Value(middleware.UserContextKey).(int32)
+
+	if !ok {
+		http.Error(w, "user user id cannot be loaded from the session data", http.StatusInternalServerError)
+		return
+	}
+
 	query, connClose, err := database.GetNewConnection(r.Context())
 
 	if err != nil {
@@ -59,13 +75,6 @@ func GetAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer connClose()
-
-	contextUserID, ok := r.Context().Value(middleware.UserContextKey).(int32)
-
-	if !ok {
-		http.Error(w, "user user id cannot be loaded from the session data", http.StatusInternalServerError)
-		return
-	}
 
 	userCheckParams := db.GetAccountWithUserCheckParams{
 		ID:     int32(accountID),
@@ -96,6 +105,49 @@ func GetAccount(w http.ResponseWriter, r *http.Request) {
 	w.Write(serializedAccount)
 }
 
+func saveAccount(context context.Context, newAccount db.CreateAccountParams) (*db.Account, error, int) {
+	userID, ok := context.Value(middleware.UserContextKey).(int32)
+
+	if !ok {
+		return nil, errors.New("user id cannot be loaded from the session"), http.StatusInternalServerError
+	}
+
+	query, connClose, tx, err := database.GetNewConnectionWithTransaction(context)
+
+	if err != nil {
+		log.Println(err.Error())
+		return nil, errors.New("service unavailable"), http.StatusInternalServerError
+	}
+
+	defer connClose()
+	defer tx.Rollback(context)
+
+	qtx := query.WithTx(tx)
+
+	account, err := qtx.CreateAccount(context, newAccount)
+
+	if err != nil {
+		log.Println(err.Error())
+		return nil, errors.New("account creation failed"), http.StatusInternalServerError
+	}
+
+	member := db.CreateMemberParams{
+		UserID:       userID,
+		MemberRoleID: 1,
+		AccountID:    account.ID,
+	}
+
+	if _, err := qtx.CreateMember(context, member); err != nil {
+		log.Println(err.Error())
+		return nil, errors.New("account creation failed"), http.StatusInternalServerError
+	}
+
+	tx.Commit(context)
+
+	return &account, nil, http.StatusOK
+
+}
+
 func CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 	var newAccount db.CreateAccountParams
@@ -106,30 +158,10 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := r.Context().Value(middleware.UserContextKey).(int32)
-
-	if !ok {
-		http.Error(w, "user id cannot be loaded from the session", http.StatusInternalServerError)
-		return
-	}
-
-	newAccount.UserID = userID
-
-	query, connClose, err := database.GetNewConnection(r.Context())
+	account, err, statuscode := saveAccount(r.Context(), newAccount)
 
 	if err != nil {
-		log.Println(err.Error())
-		http.Error(w, "service unavailable", http.StatusInternalServerError)
-		return
-	}
-
-	defer connClose()
-
-	account, err := query.CreateAccount(r.Context(), newAccount)
-
-	if err != nil {
-		log.Println(err.Error())
-		http.Error(w, "account creation failed", http.StatusInternalServerError)
+		http.Error(w, err.Error(), statuscode)
 		return
 	}
 
@@ -138,6 +170,7 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err.Error())
 		http.Error(w, "data serialization failed", http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -174,6 +207,13 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 
 	accountUpdateData.ID = int32(accountID)
 
+	contextUserID, ok := r.Context().Value(middleware.UserContextKey).(int32)
+
+	if !ok {
+		http.Error(w, "user user id cannot be loaded from the session data", http.StatusInternalServerError)
+		return
+	}
+
 	query, connClose, err := database.GetNewConnection(r.Context())
 
 	if err != nil {
@@ -184,21 +224,12 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 
 	defer connClose()
 
-	contextUserID, ok := r.Context().Value(middleware.UserContextKey).(int32)
-
-	if !ok {
-		http.Error(w, "user user id cannot be loaded from the session data", http.StatusInternalServerError)
-		return
-	}
-
 	userCheckParams := db.GetAccountWithUserCheckParams{
 		ID:     int32(accountID),
 		UserID: contextUserID,
 	}
 
 	account, err := query.GetAccountWithUserCheck(r.Context(), userCheckParams)
-
-	// account, err := query.GetAccount(r.Context(), int32(accountID))
 
 	if err != nil {
 		log.Println(err.Error())

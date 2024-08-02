@@ -40,11 +40,11 @@ WHERE id = $1 LIMIT 1;
 SELECT 
     acc.*,
     CASE 
-        WHEN mem.user_id IS NOT NULL OR (acc.account_type = 'individual' AND acc.user_id=$2) THEN 1
+        WHEN mem.user_id IS NOT NULL THEN 1
         ELSE 0
     END AS is_member
 FROM Accounts acc
-LEFT JOIN Members mem ON acc.id = mem.account_id AND (mem.user_id = $2)
+JOIN Members mem ON acc.id = mem.account_id AND mem.user_id = $2
 WHERE acc.id = $1;
 
 -- name: ListAccount :many
@@ -52,15 +52,17 @@ SELECT * FROM Accounts
 ORDER BY id;
 
 -- name: ListAccountByUser :many
-SELECT * FROM Accounts
-WHERE user_id = $1
-ORDER BY id;
+SELECT 
+  	acc.*
+FROM Accounts acc
+JOIN Members mem ON acc.id = mem.account_id
+WHERE mem.user_id = $1;
 
 -- name: CreateAccount :one
 INSERT INTO Accounts (
-  user_id, account_name, account_type
+  account_name, account_type
 ) VALUES (
-  $1, $2, $3
+  $1, $2
 )
 RETURNING *;
 
