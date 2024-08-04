@@ -13,7 +13,7 @@ import (
 )
 
 func ListAccounts(w http.ResponseWriter, r *http.Request) {
-	contextUserID, ok := r.Context().Value(middleware.UserContextKey).(int32)
+	contextUserID, ok := r.Context().Value(middleware.UserIDContextKey).(int32)
 
 	if !ok {
 		http.Error(w, "user user id cannot be loaded from the session data", http.StatusInternalServerError)
@@ -59,7 +59,7 @@ func GetAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	contextUserID, ok := r.Context().Value(middleware.UserContextKey).(int32)
+	contextUserID, ok := r.Context().Value(middleware.UserIDContextKey).(int32)
 
 	if !ok {
 		http.Error(w, "user user id cannot be loaded from the session data", http.StatusInternalServerError)
@@ -105,18 +105,18 @@ func GetAccount(w http.ResponseWriter, r *http.Request) {
 	w.Write(serializedAccount)
 }
 
-func saveAccount(context context.Context, newAccount db.CreateAccountParams) (*db.Account, error, int) {
-	userID, ok := context.Value(middleware.UserContextKey).(int32)
+func saveAccount(context context.Context, newAccount db.CreateAccountParams) (*db.Account, int, error) {
+	userID, ok := context.Value(middleware.UserIDContextKey).(int32)
 
 	if !ok {
-		return nil, errors.New("user id cannot be loaded from the session"), http.StatusInternalServerError
+		return nil, http.StatusInternalServerError, errors.New("user id cannot be loaded from the session")
 	}
 
 	query, connClose, tx, err := database.GetNewConnectionWithTransaction(context)
 
 	if err != nil {
 		log.Println(err.Error())
-		return nil, errors.New("service unavailable"), http.StatusInternalServerError
+		return nil, http.StatusInternalServerError, errors.New("service unavailable")
 	}
 
 	defer connClose()
@@ -128,7 +128,7 @@ func saveAccount(context context.Context, newAccount db.CreateAccountParams) (*d
 
 	if err != nil {
 		log.Println(err.Error())
-		return nil, errors.New("account creation failed"), http.StatusInternalServerError
+		return nil, http.StatusInternalServerError, errors.New("account creation failed")
 	}
 
 	member := db.CreateMemberParams{
@@ -139,12 +139,12 @@ func saveAccount(context context.Context, newAccount db.CreateAccountParams) (*d
 
 	if _, err := qtx.CreateMember(context, member); err != nil {
 		log.Println(err.Error())
-		return nil, errors.New("account creation failed"), http.StatusInternalServerError
+		return nil, http.StatusInternalServerError, errors.New("account creation failed")
 	}
 
 	tx.Commit(context)
 
-	return &account, nil, http.StatusOK
+	return &account, http.StatusOK, nil
 
 }
 
@@ -158,7 +158,7 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	account, err, statuscode := saveAccount(r.Context(), newAccount)
+	account, statuscode, err := saveAccount(r.Context(), newAccount)
 
 	if err != nil {
 		http.Error(w, err.Error(), statuscode)
@@ -207,7 +207,7 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 
 	accountUpdateData.ID = int32(accountID)
 
-	contextUserID, ok := r.Context().Value(middleware.UserContextKey).(int32)
+	contextUserID, ok := r.Context().Value(middleware.UserIDContextKey).(int32)
 
 	if !ok {
 		http.Error(w, "user user id cannot be loaded from the session data", http.StatusInternalServerError)
@@ -233,7 +233,7 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println(err.Error())
-		http.Error(w, "this account does not exist", http.StatusNotFound)
+		http.Error(w, "this account does not exist", http.StatusForbidden)
 		return
 	}
 

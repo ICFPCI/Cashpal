@@ -13,7 +13,7 @@ import (
 
 type ContextKey string
 
-const UserContextKey = ContextKey("UserID")
+const UserIDContextKey = ContextKey("UserID")
 
 type Middleware func(http.Handler) http.Handler
 
@@ -85,7 +85,7 @@ func ValidateJWT(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), UserContextKey, int32(userID))
+		ctx := context.WithValue(r.Context(), UserIDContextKey, int32(userID))
 		request := r.WithContext(ctx)
 
 		next.ServeHTTP(w, request)

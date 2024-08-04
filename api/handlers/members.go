@@ -3,7 +3,10 @@ package handlers
 import (
 	"cashpal/database"
 	db "cashpal/database/generated"
+	"cashpal/middleware"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,6 +23,17 @@ func ListMembers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID, ok := r.Context().Value(middleware.UserIDContextKey).(int32)
+
+	if !ok {
+		http.Error(w, "user id cannot be loaded from the session", http.StatusInternalServerError)
+	}
+
+	ListMemberParams := db.ListMemberByAccountWithUserCheckParams{
+		AccountID: int32(accountID),
+		UserID:    int32(userID),
+	}
+
 	query, connClose, err := database.GetNewConnection(r.Context())
 
 	if err != nil {
@@ -30,7 +44,7 @@ func ListMembers(w http.ResponseWriter, r *http.Request) {
 
 	defer connClose()
 
-	members, err := query.ListMemberByAccount(r.Context(), int32(accountID))
+	members, err := query.ListMemberByAccountWithUserCheck(r.Context(), ListMemberParams)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -74,6 +88,12 @@ func GetMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	contextUserID, ok := r.Context().Value(middleware.UserIDContextKey).(int32)
+
+	if !ok {
+		http.Error(w, "user id cannot be loaded from the session", http.StatusInternalServerError)
+	}
+
 	query, connClose, err := database.GetNewConnection(r.Context())
 
 	if err != nil {
@@ -84,12 +104,13 @@ func GetMember(w http.ResponseWriter, r *http.Request) {
 
 	defer connClose()
 
-	memberData := db.GetMemberParams{
+	memberData := db.GetMemberWithUserCheckParams{
 		AccountID: int32(accountID),
 		UserID:    int32(userID),
+		UserID_2:  int32(contextUserID), //UserID from the context
 	}
 
-	member, err := query.GetMember(r.Context(), memberData)
+	member, err := query.GetMemberWithUserCheck(r.Context(), memberData)
 
 	if err != nil {
 		fmt.Println(err)
@@ -107,6 +128,32 @@ func GetMember(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(serializedMember)
+}
+
+func verifyAdminRole(context context.Context, query db.Queries, accountID int32) error {
+
+	contextUserID, ok := context.Value(middleware.UserIDContextKey).(int32)
+
+	if !ok {
+		return errors.New("user id cannot be loaded from the session")
+	}
+
+	logedMemberParams := db.GetMemberParams{
+		AccountID: int32(accountID),
+		UserID:    contextUserID,
+	}
+
+	logedMember, err := query.GetMember(context, logedMemberParams)
+
+	if err != nil {
+		return errors.New("error verifying account permissions")
+	}
+
+	if logedMember.MemberRoleID != 1 {
+		return errors.New("administrator privileges are needed to modify the member list")
+	}
+
+	return nil
 }
 
 func AddMember(w http.ResponseWriter, r *http.Request) {
@@ -138,6 +185,11 @@ func AddMember(w http.ResponseWriter, r *http.Request) {
 
 	defer connClose()
 
+	if err := verifyAdminRole(r.Context(), *query, int32(accountID)); err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
 	member, err := query.CreateMember(r.Context(), newMember)
 
 	if err != nil {
@@ -159,7 +211,6 @@ func AddMember(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateMember(w http.ResponseWriter, r *http.Request) {
-
 	accountID, err := strconv.ParseInt(r.PathValue("accountID"), 10, 32)
 
 	if err != nil {
@@ -196,6 +247,12 @@ func UpdateMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer connClose()
+
+	if err := verifyAdminRole(r.Context(), *query, int32(accountID)); err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
 	member, err := query.UpdateMember(r.Context(), updatedMemberData)
 	if err != nil {
 		fmt.Println(err)
@@ -241,6 +298,11 @@ func DeleteMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer connClose()
+
+	if err := verifyAdminRole(r.Context(), *query, int32(accountID)); err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
 
 	memberData := db.DeleteMemberParams{
 		AccountID: int32(accountID),

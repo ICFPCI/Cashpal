@@ -115,6 +115,13 @@ WHERE id = $1;
 SELECT * FROM Members
 WHERE account_id = $1 and user_id = $2 LIMIT 1;
 
+-- name: GetMemberWithUserCheck :one
+SELECT m1.*
+FROM Members as m1
+JOIN Members as m2
+ON m1.account_id = m2.account_id AND m2.user_id = $3
+WHERE m1.account_id = $1 AND m1.user_id = $2;
+
 -- name: ListMember :many
 SELECT * FROM Members
 ORDER BY id;
@@ -123,6 +130,13 @@ ORDER BY id;
 SELECT * FROM Members
 WHERE account_id = $1
 ORDER BY id;
+
+-- name: ListMemberByAccountWithUserCheck :many
+SELECT m1.*
+FROM Members as m1
+JOIN Members as m2
+ON m1.account_id = m2.account_id AND m2.user_id = $2
+WHERE m1.account_id = $1;
 
 -- name: CreateMember :one
 INSERT INTO Members (

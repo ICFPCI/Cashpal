@@ -319,6 +319,34 @@ func (q *Queries) GetMember(ctx context.Context, arg GetMemberParams) (Member, e
 	return i, err
 }
 
+const getMemberWithUserCheck = `-- name: GetMemberWithUserCheck :one
+SELECT m1.id, m1.account_id, m1.user_id, m1.member_role_id, m1.created_at, m1.updated_at
+FROM Members as m1
+JOIN Members as m2
+ON m1.account_id = m2.account_id AND m2.user_id = $3
+WHERE m1.account_id = $1 AND m1.user_id = $2
+`
+
+type GetMemberWithUserCheckParams struct {
+	AccountID int32 `json:"account_id"`
+	UserID    int32 `json:"user_id"`
+	UserID_2  int32 `json:"user_id_2"`
+}
+
+func (q *Queries) GetMemberWithUserCheck(ctx context.Context, arg GetMemberWithUserCheckParams) (Member, error) {
+	row := q.db.QueryRow(ctx, getMemberWithUserCheck, arg.AccountID, arg.UserID, arg.UserID_2)
+	var i Member
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.UserID,
+		&i.MemberRoleID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getTransaction = `-- name: GetTransaction :one
 
 SELECT id, account_id, user_id, transaction_date, transaction_type_id, amount, created_at, updated_at, description FROM Transactions
@@ -551,6 +579,46 @@ ORDER BY id
 
 func (q *Queries) ListMemberByAccount(ctx context.Context, accountID int32) ([]Member, error) {
 	rows, err := q.db.Query(ctx, listMemberByAccount, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Member
+	for rows.Next() {
+		var i Member
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.UserID,
+			&i.MemberRoleID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMemberByAccountWithUserCheck = `-- name: ListMemberByAccountWithUserCheck :many
+SELECT m1.id, m1.account_id, m1.user_id, m1.member_role_id, m1.created_at, m1.updated_at
+FROM Members as m1
+JOIN Members as m2
+ON m1.account_id = m2.account_id AND m2.user_id = $2
+WHERE m1.account_id = $1
+`
+
+type ListMemberByAccountWithUserCheckParams struct {
+	AccountID int32 `json:"account_id"`
+	UserID    int32 `json:"user_id"`
+}
+
+func (q *Queries) ListMemberByAccountWithUserCheck(ctx context.Context, arg ListMemberByAccountWithUserCheckParams) ([]Member, error) {
+	rows, err := q.db.Query(ctx, listMemberByAccountWithUserCheck, arg.AccountID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}

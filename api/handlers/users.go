@@ -15,7 +15,7 @@ import (
 
 func verifyUserOwnership(userID int32, context context.Context) (int, error) {
 
-	contextUserID, ok := context.Value(middleware.UserContextKey).(int32)
+	contextUserID, ok := context.Value(middleware.UserIDContextKey).(int32)
 	if !ok {
 		return http.StatusInternalServerError, errors.New("user id cannot be loaded from the session data")
 	}
