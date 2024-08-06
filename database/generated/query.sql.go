@@ -98,6 +98,7 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Mem
 }
 
 const createTransaction = `-- name: CreateTransaction :one
+
 INSERT INTO Transactions (
   account_id, user_id, transaction_date, transaction_type_id, amount, description
 )
@@ -116,6 +117,9 @@ type CreateTransactionParams struct {
 	Description       string      `json:"description"`
 }
 
+// SELECT * FROM Transactions
+// WHERE account_id = $1
+// ORDER BY id;
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
 	row := q.db.QueryRow(ctx, createTransaction,
 		arg.AccountID,
@@ -356,6 +360,39 @@ WHERE id = $1 LIMIT 1
 // TRANSACTIONS
 func (q *Queries) GetTransaction(ctx context.Context, id int32) (Transaction, error) {
 	row := q.db.QueryRow(ctx, getTransaction, id)
+	var i Transaction
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.UserID,
+		&i.TransactionDate,
+		&i.TransactionTypeID,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Description,
+	)
+	return i, err
+}
+
+const getTransactionWithCheck = `-- name: GetTransactionWithCheck :one
+SELECT t.id, t.account_id, t.user_id, t.transaction_date, t.transaction_type_id, t.amount, t.created_at, t.updated_at, t.description
+FROM transactions AS t
+WHERE t.account_id = $1 and t.id = $2 AND EXISTS (
+	SELECT 1
+	FROM members AS m
+	WHERE m.account_id = t.account_id AND m.user_id = $3
+)
+`
+
+type GetTransactionWithCheckParams struct {
+	AccountID int32 `json:"account_id"`
+	ID        int32 `json:"id"`
+	UserID    int32 `json:"user_id"`
+}
+
+func (q *Queries) GetTransactionWithCheck(ctx context.Context, arg GetTransactionWithCheckParams) (Transaction, error) {
+	row := q.db.QueryRow(ctx, getTransactionWithCheck, arg.AccountID, arg.ID, arg.UserID)
 	var i Transaction
 	err := row.Scan(
 		&i.ID,
@@ -680,13 +717,22 @@ func (q *Queries) ListTransaction(ctx context.Context) ([]Transaction, error) {
 }
 
 const listTransactionByAccount = `-- name: ListTransactionByAccount :many
-SELECT id, account_id, user_id, transaction_date, transaction_type_id, amount, created_at, updated_at, description FROM Transactions
-WHERE account_id = $1
-ORDER BY id
+SELECT t.id, t.account_id, t.user_id, t.transaction_date, t.transaction_type_id, t.amount, t.created_at, t.updated_at, t.description
+FROM transactions AS t
+WHERE t.account_id = $1 AND EXISTS (
+	SELECT 1
+	FROM members AS m
+	WHERE m.account_id = t.account_id AND m.user_id = $2
+)
 `
 
-func (q *Queries) ListTransactionByAccount(ctx context.Context, accountID int32) ([]Transaction, error) {
-	rows, err := q.db.Query(ctx, listTransactionByAccount, accountID)
+type ListTransactionByAccountParams struct {
+	AccountID int32 `json:"account_id"`
+	UserID    int32 `json:"user_id"`
+}
+
+func (q *Queries) ListTransactionByAccount(ctx context.Context, arg ListTransactionByAccountParams) ([]Transaction, error) {
+	rows, err := q.db.Query(ctx, listTransactionByAccount, arg.AccountID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}

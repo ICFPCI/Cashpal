@@ -26,8 +26,7 @@ CREATE TABLE Accounts (
     account_name TEXT NOT NULL,
     account_type TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
-    updated_at TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
-    CONSTRAINT fk_account_user FOREIGN KEY (user_id) REFERENCES Users(id)
+    updated_at TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc')
 );
 
 CREATE TABLE Account_Events (

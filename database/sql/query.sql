@@ -163,14 +163,31 @@ WHERE account_id = $1 and user_id = $2;
 SELECT * FROM Transactions
 WHERE id = $1 LIMIT 1;
 
+-- name: GetTransactionWithCheck :one
+SELECT t.*
+FROM transactions AS t
+WHERE t.account_id = $1 and t.id = $2 AND EXISTS (
+	SELECT 1
+	FROM members AS m
+	WHERE m.account_id = t.account_id AND m.user_id = $3
+);
+
 -- name: ListTransaction :many
 SELECT * FROM Transactions
 ORDER BY id;
 
 -- name: ListTransactionByAccount :many
-SELECT * FROM Transactions
-WHERE account_id = $1
-ORDER BY id;
+SELECT t.*
+FROM transactions AS t
+WHERE t.account_id = $1 AND EXISTS (
+	SELECT 1
+	FROM members AS m
+	WHERE m.account_id = t.account_id AND m.user_id = $2
+);
+
+-- SELECT * FROM Transactions
+-- WHERE account_id = $1
+-- ORDER BY id;
 
 -- name: CreateTransaction :one
 INSERT INTO Transactions (
