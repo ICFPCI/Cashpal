@@ -178,7 +178,7 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func compareData(updateData *db.UpdateAccountParams, currentData *db.GetAccountWithUserCheckRow) {
+func compareAccountData(updateData *db.UpdateAccountParams, currentData *db.GetAccountWithUserCheckRow) {
 	if updateData.AccountName == "" {
 		updateData.AccountName = currentData.AccountName
 	}
@@ -242,7 +242,7 @@ func UpdateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	compareData(&accountUpdateData, &account)
+	compareAccountData(&accountUpdateData, &account)
 
 	updatedAccount, err := query.UpdateAccount(r.Context(), accountUpdateData)
 
